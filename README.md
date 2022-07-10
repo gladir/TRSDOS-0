@@ -11,6 +11,14 @@ Voici la liste des différents fichiers proposés dans TRSDOS-0 :
 			<th>Description</th>	
 		</tr>
 		<tr>
+			<td><b>ASMZ80.PAS</b></td>
+			<td>Cette commande permet de lancer le compilateur de langage de programmation assembleur pour les microprocesseur Z80.</td>
+		</tr>
+		<tr>
+		       <td><b>RUNZ80.PAS</b></td>
+		       <td>Cette commande permet d'exécuter du code machine du microprocesseur Z80.</td>
+		</tr>
+		<tr>
 			<td><b>TRSDOS.PAS</b></td>
 			<td>Cette commande permet de lancer l'interpréteur de commande <a href="https://www.gladir.com/OS/TRSDOS/intro.htm">TRSDOS</a>.</td>
 		</tr>
