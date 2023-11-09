@@ -11,6 +11,10 @@ Voici la liste des différents fichiers proposés dans TRSDOS-0 :
 			<th>Description</th>	
 		</tr>
 		<tr>
+			<td><b>ATTRIB.PAS</b></td>
+			<td>Cette commande permet de fixer les attributs de protection.</td>
+		</tr>
+		<tr>
 			<td><b>ASMZ80.PAS</b></td>
 			<td>Cette commande permet de lancer le compilateur de langage de programmation assembleur pour les microprocesseur Z80.</td>
 		</tr>
