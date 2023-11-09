@@ -22,6 +22,8 @@ Var
  CmdStr:String;
  CurrCommand,ParamList:String;
  I,J:Byte;
+ AttrAdd,AttrRemove:Word;
+ SubDirectory,ReadOnlyFlag:Boolean;
 
 Function PadRight(S:String;Space:Byte):String;
 Var
@@ -95,6 +97,24 @@ Function Path2Drive(Path:String):Char;Begin
  Path2Drive:=Path[1];
 End;
 
+Function Path2Dir(Const Path:String):String;
+Var
+ D:DirStr;
+ N:NameStr;
+ E:ExtStr;
+Begin
+ Path2Dir:='';
+ If Path=''Then Exit;
+ FSplit(Path,D,N,E);
+ If E=''Then Begin
+  If D[Length(D)]<>'\'Then D:=D+'\';
+  D:=D+E;
+ End;
+ If D=''Then Path2Dir:='' Else
+ If D[Length(D)]<>'\'Then D:=D+'\';
+ Path2Dir:=D;
+End;
+
 Function Path2Ext(Const Path:String):String;
 Var
  D:DirStr;
@@ -103,6 +123,12 @@ Var
 Begin
  FSplit(Path,D,N,E);
  Path2Ext:=E;
+End;
+
+Function SetPath4AddFile(Path:String):String;Begin
+ If Path=''Then GetDir(0,Path);
+ If Path[Length(Path)]<>'\'Then Path:=Path+'\';
+ SetPath4AddFile:=Path;
 End;
 
 Function GetDiskLabel(Dsk:Byte):String;
@@ -232,6 +258,64 @@ Begin
  ExtractParam:=Temp;
 End;
 
+Procedure SetAttribut(Var F:File);
+Var
+ CurrAttr:Word;
+Begin
+ GetFAttr(F,CurrAttr);
+ If AttrRemove and ReadOnly=ReadOnly Then CurrAttr:=CurrAttr and Not ReadOnly;
+ If AttrRemove and Archive=Archive Then CurrAttr:=CurrAttr and Not Archive;
+ If AttrRemove and Hidden=Hidden Then CurrAttr:=CurrAttr and Not Hidden;
+ If AttrRemove and SysFile=SysFile Then CurrAttr:=CurrAttr and Not SysFile;
+
+ If AttrAdd and ReadOnly=ReadOnly Then CurrAttr:=CurrAttr or ReadOnly;
+ If AttrAdd and Archive=Archive Then CurrAttr:=CurrAttr or Archive;
+ If AttrAdd and Hidden=Hidden Then CurrAttr:=CurrAttr or Hidden;
+ If AttrAdd and SysFile=SysFile THen CurrAttr:=CurrAttr or SysFile;
+ SetFAttr(F,CurrAttr);
+End;
+
+Procedure SetAttributFiles(FileSpec:String);
+Var
+ Info:SearchRec;
+ CurrFile:File;
+ Found:Boolean;
+Begin
+ FileSpec:=FExpand(FileSpec);
+ FindFirst(FileSpec,AnyFile,Info);
+ Found:=False;
+ While DOSError=0 do Begin
+  Found:=True;
+  If Info.Attr and Directory=Directory Then Begin
+   If(SubDirectory)Then Begin
+    If Not((Info.Name='.')or(Info.Name='..')or(Info.Name=''))Then Begin
+     SetAttributFiles(SetPath4AddFile(Path2Dir(FileSpec)+Info.Name)+'*.*');
+    End;
+   End;
+  End
+   Else
+  Begin
+   Assign(CurrFile,Path2Dir(FileSpec)+Info.Name);
+   SetAttribut(CurrFile);
+  End;
+  FindNext(Info);
+ End;
+ If Not Found Then WriteLn('Aucun resultat trouve');
+End;
+
+Procedure ShowAttribut;
+Var
+ Info:SearchRec;
+Begin
+ FindFirst('*.*',AnyFile and Not Directory,Info);
+ While DOSError=0 do Begin
+  Write(PadRight(Info.Name,18));
+  If Info.Attr and ReadOnly=ReadOnly Then Write('P') Else Write(' ');
+  Write(' ');
+  FindNext(Info);
+ End;
+End;
+
 Procedure HomeMessage;Begin
  WriteLn;
  WriteLn('Clone de l''interpreteur de commande TRSDOS');
@@ -239,15 +323,53 @@ Procedure HomeMessage;Begin
 End;
 
 Procedure ShowPrompt;Begin
- WriteLn('TRSDOS Ready');
+ WriteLn('DOS Ready');
 End;
 
 Procedure InvalidParam(P:Byte);Begin
  WriteLn('Le parametre suivant est invalide : ',ExtractParam(P));
 End;
 
-Procedure ATTRIBCommand;Begin
- WriteLn('Cette commande n''est pas mise en oeuvre');
+Procedure ATTRIBCommand;
+Var
+ P,I:Integer;
+ CurrParam:String;
+Begin
+ If ExtractParam(1)='/?'Then Begin
+  WriteLn('ATTRIB : Cette commande permet de fixer les attributs de ',
+                    'protection');
+  WriteLn;
+  WriteLn('Syntaxe: ATTRIB [/?]');
+  WriteLn('         ATTRIB filespec (PROT=READ)');
+  WriteLn;
+  WriteLn(' (PROT=READ)  Fixe en lecture seulement');
+ End
+  Else
+ If ExtractParam(1)<>''Then Begin
+  SubDirectory:=False;
+  P:=0;
+  Repeat
+   Inc(P);
+   CurrParam:=ExtractParam(P);
+   If CurrParam=''Then Break;
+   If StrToUpper(CurrParam)='(PROT=READ)'Then Begin
+    ReadOnlyFlag:=True;
+   End;
+  Until CurrParam='';
+  If(ReadOnlyFlag)Then AttrAdd:=ReadOnly
+                  Else AttrRemove:=ReadOnly;
+  P:=0;
+  Repeat
+   Inc(P);
+   CurrParam:=ExtractParam(P);
+   If CurrParam=''Then Break;
+   If StrToUpper(CurrParam)<>'(PROT=READ)'Then Begin
+    SetAttributFiles(CurrParam);
+   End;
+  Until CurrParam='';
+ End
+  Else
+ ShowAttribut;
 End;
 
 Procedure AUTOCommand;Begin
