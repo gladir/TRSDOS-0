@@ -23,6 +23,10 @@ Voici la liste des différents fichiers proposés dans TRSDOS-0 :
 			<td>Cette commande permet de sauvegarder le contenu de la mémoire conventionnelle de 640 Ko et l'envoi dans un fichier. Uniquement supporté sous DOS et non TRSDOS.</td>
 		</tr>
 		<tr>
+			<td><b>LIST.PAS</b></td>
+			<td>Cette commande permet d'afficher le contenu du fichier.</td>
+		</tr>
+		<tr>
 		       <td><b>RUNZ80.PAS</b></td>
 		       <td>Cette commande permet d'exécuter du code machine du microprocesseur Z80.</td>
 		</tr>
