@@ -20,7 +20,7 @@ Voici la liste des différents fichiers proposés dans TRSDOS-0 :
 		</tr>
 		<tr>
 			<td><b>DIR.PAS</b></td>
-			<td>Cette commande permet d''afficher le contenu d''un repertoire dans l''unite de disque.</td>
+			<td>Cette commande permet d'afficher le contenu d'un repertoire dans l'unité de disque.</td>
 		</tr>
 		<tr>
 			<td><b>DUMP.PAS</b></td>
