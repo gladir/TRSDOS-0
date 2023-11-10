@@ -17,11 +17,15 @@ Const
  );
 
 Var
+ Language:(_French,_English,_Germany,_Italian,_Spain);
+ TmpLanguage:String;
+ InCmd:Byte;
+ Option:(optNone,optCommand);
  Echo:Boolean;
  CommandFound,Terminated:Boolean;
  CmdStr:String;
  CurrCommand,ParamList:String;
- I,J:Byte;
+  I,J:Byte;
  AttrAdd,AttrRemove:Word;
  SubDirectory,ReadOnlyFlag:Boolean;
 
@@ -82,6 +86,14 @@ Begin
   If S[I] in['a'..'z']Then S[I]:=Chr(Ord(S[I])-32);
  End;
  StrToUpper:=S;
+End;
+
+Function FileExist(Name:String):Boolean;
+Var
+ Rec:SearchRec;
+Begin
+ FindFirst(Name,AnyFile,Rec);
+ FileExist:=DosError=0;
 End;
 
 Function GetCurrentDisk:Char;
@@ -306,10 +318,13 @@ End;
 Procedure ShowAttribut;
 Var
  Info:SearchRec;
+ CurrName:String;
 Begin
  FindFirst('*.*',AnyFile and Not Directory,Info);
  While DOSError=0 do Begin
-  Write(PadRight(Info.Name,18));
+  CurrName:=Info.Name;
+  ChangeChar(CurrName,'.','/');
+  Write(PadRight(CurrName,18));
   If Info.Attr and ReadOnly=ReadOnly Then Write('P') Else Write(' ');
   Write(' ');
   FindNext(Info);
@@ -621,8 +636,58 @@ Begin
  End;
 End;
 
-Procedure KILLCommand;Begin
- WriteLn('Cette commande n''est pas mise en oeuvre');
+Procedure KILLCommand;
+Var
+ P:Byte;
+ Err:Word;
+ F:File;
+ CurrParam:String;
+Begin
+ P:=0;
+ Repeat
+  Inc(P);
+  CurrParam:=ExtractParam(P);
+  If CurrParam=''Then Begin
+   If P=1Then Begin
+    WriteLn('ParamŠtre requis');
+   End;
+   Break;
+  End
+   Else
+  If CurrParam='/?'Then Begin
+   Case Language of
+    _Germany:Begin
+     WriteLn('L”scht eine oder mehrere Dateien.');
+     WriteLn;
+     WriteLn('KILL [/?] Datainame');
+    End;
+    _English:Begin
+     WriteLn('Purpose:  Erase one file');
+     WriteLn;
+     WriteLn('Format:   KILL [/?] file');
+     Exit;
+    End;
+    Else Begin
+     WriteLn('KILL   Cette commande permet d''effectuer la suppression de fichier sur un unit‚ de disque.');
+     WriteLn;
+     WriteLn('Syntaxe:');
+     WriteLn;
+     WriteLn('KILL [/?] fichier');
+     WriteLn;
+     WriteLn('    /?    Ce paramŠtre permet d''afficher l''aide sur cette commande');
+     WriteLn(' fichier  Ce paramŠtre permet d''indiquer le nom du fichier a supprimer.');
+     Exit;
+    End;
+   End;
+  End;
+  {$I-}Assign(F,CurrParam);
+  Erase(F);
+  {$I+}
+  Err:=IoResult;
+  If Err=0Then WriteLn('1 fichier de supprime')
+          Else WriteLn(GetErrorMessage(Err));
+  If P>9Then Break;
+ Until CurrParam='';
 End;
 
 Procedure LIBCommand;Begin
@@ -766,60 +831,148 @@ Procedure UnknownCommand;Begin
  WriteLn;
 End;
 
-BEGIN
- Echo:=True;Terminated:=False;
- HomeMessage;
- Repeat
-  ShowPrompt;
-  ReadLn(CmdStr);
-  ExtractCommand;
-  CommandFound:=False;
-  For J:=Low(CommandList) to High(CommandList) do Begin
-   If CurrCommand=CommandList[J]Then Begin
-    Case(J)of
-     0:ATTRIBCommand;
-     1:AUTOCommand;
-     2:BACKUPCommand;
-     3:BASICCommand;
-     4:BASIC2Command;
-     5:CLOCKCommand;
-     6:COPYCommand;
-     7:DATECommand;
-     8:DEBUGCommand;
-     9:DEVICECommand;
-     10:DIRCommand;
-     11:DISKDUMPCommand;
-     12:DUMPCommand;
-     13:EXITCommand;
-     14:FORMATCommand;
-     15:FREECommand;
-     16:KILLCommand;
-     17:LIBCommand;
-     18:LISTCommand;
-     19:LOADCommand;
-     20:PRINTCommand;
-     21:PROTCommand;
-     22:RENAMECommand;
-     23:TAPEDISKCommand;
-     24:TIMECommand;
-     25:TRACECommand;
-     26:VERIFYCommand;
-    End;
-    If J<=High(CommandList)Then Begin
-     CommandFound:=True;
-     WriteLn;
-     Break;
-    End;
+Procedure RunCommand;
+Var
+ LastEcho:Boolean;
+ FileJcl:Text;
+Begin
+ ExtractCommand;
+ CommandFound:=False;
+ For J:=Low(CommandList) to High(CommandList) do Begin
+  If CurrCommand=CommandList[J]Then Begin
+   Case(J)of
+    0:ATTRIBCommand;
+    1:AUTOCommand;
+    2:BACKUPCommand;
+    3:BASICCommand;
+    4:BASIC2Command;
+    5:CLOCKCommand;
+    6:COPYCommand;
+    7:DATECommand;
+    8:DEBUGCommand;
+    9:DEVICECommand;
+    10:DIRCommand;
+    11:DISKDUMPCommand;
+    12:DUMPCommand;
+    13:EXITCommand;
+    14:FORMATCommand;
+    15:FREECommand;
+    16:KILLCommand;
+    17:LIBCommand;
+    18:LISTCommand;
+    19:LOADCommand;
+    20:PRINTCommand;
+    21:PROTCommand;
+    22:RENAMECommand;
+    23:TAPEDISKCommand;
+    24:TIMECommand;
+    25:TRACECommand;
+    26:VERIFYCommand;
+   End;
+   If J<=High(CommandList)Then Begin
+    CommandFound:=True;
+    WriteLn;
+    Break;
    End;
   End;
-  If Not(CommandFound)Then Begin
-   If CmdStr='?'Then Begin
-    For I:=Low(CommandList) to High(CommandList) do Write(PadRight(CommandList[I],10));
-    WriteLn;
-    WriteLn;
+ End;
+ If Not(CommandFound)Then Begin
+  If CmdStr='?'Then Begin
+   For I:=Low(CommandList) to High(CommandList) do Write(PadRight(CommandList[I],10));
+   WriteLn;
+   WriteLn;
+  End
+   Else
+  If FileExist(CmdStr+'.JCL')Then Begin
+   Inc(InCmd);
+   If InCmd>20Then Begin
+    WriteLn('Limite de 20 fichiers de traitements par lots maximum.');
+    Exit;
+   End;
+   LastEcho:=Echo;
+   Assign(FileJcl,CmdStr+'.JCL');
+   {$I-}Reset(FileJcl);{$I+}
+   If IOResult=0Then Begin
+    While Not EOF(FileJcl)do Begin
+     ReadLn(FileJcl,CmdStr);
+     If(Echo)Then WriteLn(CmdStr);
+     RunCommand;
+    End;
    End
     Else
-   UnknownCommand;
+   WriteLn('Probleme de lecture du fichier de traitement par lot');
+   Close(FileJcl);
+   Echo:=LastEcho;
+   Dec(InCmd);
+  End
+   Else
+  UnknownCommand;
+ End;
+End;
+
+BEGIN
+ {$IFDEF FPC}
+  {$IFDEF WINDOWS}
+   SetUseACP(False);
+  {$ENDIF}
+ {$ENDIF}
+ Language:=_French;
+ TmpLanguage:=GetEnv('LANGUAGE');
+ If TmpLanguage<>''Then Begin
+  If TmpLanguage[1]='"'Then TmpLanguage:=Copy(TmpLanguage,2,255);
+  If StrToUpper(Copy(TmpLanguage,1,2))='EN'Then Language:=_English Else
+  If StrToUpper(Copy(TmpLanguage,1,2))='GR'Then Language:=_Germany Else
+  If StrToUpper(Copy(TmpLanguage,1,2))='IT'Then Language:=_Italian Else
+  If StrToUpper(Copy(TmpLanguage,1,2))='SP'Then Language:=_Spain;
+ End;
+ Echo:=True;
+ InCmd:=0;
+ If(ParamStr(1)='/?')or(ParamStr(1)='--help')or(ParamStr(1)='-h')Then Begin
+  Case Language of
+   _Germany:Begin
+    WriteLn('TRSDOS : Startet eine neue Kopie des TRSDOS-Befehlsinterpreters.');
+    WriteLn;
+    WriteLn('TRSDOS [/C Befehl]');
+   End;
+   _English:Begin
+    WriteLn('TRSDOS : Start a new copy of the TRSDOS Command Interpreter.');
+    WriteLn;
+    WriteLn('Syntax : TRSDOS [/C command]');
+   End;
+   Else Begin
+    WriteLn('TRSDOS : Cette commande permet de lancer l''interpreteur de commande TRSDOS.');
+    WriteLn;
+    WriteLn('Syntaxe : TRSDOS [/C command]');
+    WriteLn;
+    WriteLn(' /C command   Ce paramŠtre d''indiquer une des commandes TRSDOS');
+   End;
   End;
- Until Terminated;
+ End
+  Else
+ If ParamCount>1Then Begin
+  Option:=optNone;
+  For I:=1 to ParamCount do Begin
+   If(Option=optCommand)Then Begin
+    CmdStr:=ParamStr(I);
+    RunCommand;
+    Option:=optNone;
+   End
+    Else
+   If StrToUpper(ParamStr(I))='/C'Then Option:=optCommand
+    Else
+   Begin
+    WriteLn('Parametre non reconnu : ',ParamStr(I));
+   End;
+  End;
+ End
+  Else
+ Begin
+ Terminated:=False;
+  HomeMessage;
+  Repeat
+   ShowPrompt;
+   ReadLn(CmdStr);
+   RunCommand;
+  Until Terminated;
+ End;
 END.
