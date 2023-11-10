@@ -19,6 +19,10 @@ Voici la liste des différents fichiers proposés dans TRSDOS-0 :
 			<td>Cette commande permet de lancer le compilateur de langage de programmation assembleur pour les microprocesseur Z80.</td>
 		</tr>
 		<tr>
+			<td><b>DUMP.PAS</b></td>
+			<td>Cette commande permet de sauvegarder le contenu de la mémoire conventionnelle de 640 Ko et l'envoi dans un fichier. Uniquement supporté sous DOS et non TRSDOS.</td>
+		</tr>
+		<tr>
 		       <td><b>RUNZ80.PAS</b></td>
 		       <td>Cette commande permet d'exécuter du code machine du microprocesseur Z80.</td>
 		</tr>
