@@ -31,6 +31,15 @@ Begin
  StrToUpper:=S;
 End;
 
+Procedure ChangeChar(Var Str:String;OldChar,NewChar:Char);
+Var
+ I:Byte;
+Begin
+ For I:=1 to Length(Str)do Begin
+  If Str[I]=OldChar Then Str[I]:=NewChar;
+ End;
+End;
+
 Function Path2Dir(Const Path:String):String;
 Var
  D:DirStr;
@@ -103,10 +112,13 @@ End;
 Procedure ShowAttribut;
 Var
  Info:SearchRec;
+ CurrName:String;
 Begin
  FindFirst('*.*',AnyFile and Not Directory,Info);
  While DOSError=0 do Begin
-  Write(PadRight(Info.Name,18));
+  CurrName:=Info.Name;
+  ChangeChar(CurrName,'.','/');
+  Write(PadRight(CurrName,18));
   If Info.Attr and ReadOnly=ReadOnly Then Write('P') Else Write(' ');
   Write(' ');
   FindNext(Info);

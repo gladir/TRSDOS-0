@@ -25,7 +25,8 @@ Var
  CommandFound,Terminated:Boolean;
  CmdStr:String;
  CurrCommand,ParamList:String;
-  I,J:Byte;
+ I,J:Byte;
+ Clock:Boolean;
  AttrAdd,AttrRemove:Word;
  SubDirectory,ReadOnlyFlag:Boolean;
 
@@ -403,8 +404,32 @@ Procedure BASIC2Command;Begin
  WriteLn('Cette commande n''est pas mise en oeuvre');
 End;
 
-Procedure CLOCKCommand;Begin
- WriteLn('Cette commande n''est pas mise en oeuvre');
+Procedure CLOCKCommand;
+Var
+ FirstParam:String;
+ X:Boolean;
+Begin
+ FirstParam:=ExtractParam(1);
+ If FirstParam='/?'Then Begin
+  WriteLn('CLOCK   Cette commande permet d''afficher l''horloge Ö l''Çcran.');
+  WriteLn;
+  WriteLn('Syntaxe:');
+  WriteLn;
+  WriteLn('CLOCK [/?] [(OFF)|(ON)]');
+  WriteLn;
+  WriteLn('  /?    Ce parametre permet d''afficher l''aide sur cette commande');
+  WriteLn(' (OFF)  Ce parametre permet d''activer l''horloge');
+  WriteLn(' (ON)   Ce parametre permet de desactiver l''horloge');
+ End
+  Else
+ If StrToUpper(ParamList)='(OFF)'Then Clock:=False Else
+ If StrToUpper(ParamList)='(ON)'Then Clock:=True
+  Else
+ If ParamList=''Then Begin
+  Clock:=True;
+ End
+  Else
+ WriteLn('Paramätre invalide !');
 End;
 
 Procedure CopyCommand;
@@ -568,8 +593,50 @@ Procedure DISKDUMPCommand;Begin
  WriteLn('Cette commande n''est pas mise en oeuvre');
 End;
 
-Procedure DUMPCommand;Begin
- WriteLn('Cette commande n''est pas mise en oeuvre');
+Procedure DUMPCommand;
+Var
+ I:Word;
+ OutFile:File;
+ CurrParam:String;
+Begin
+ {$IFDEF FPC}
+  WriteLn('Cette commande n''est pas mise en oeuvre en Free Pascal');
+ {$ELSE}
+ CurrParam:=ExtractParam(1);
+ If(CurrParam='/?')or(CurrParam='--help')or(CurrParam='-h')Then Begin
+  Case Language of
+   _English:Begin
+    WriteLn('DUMP : This command takes a snapshot of RAM 640K and sends ',
+                   'it to the filename specified.');
+    WriteLn;
+    WriteLn('DUMP [/?] filename');
+    WriteLn;
+    WriteLn('/?          = Help for this command');
+    WriteLn('filename    = Output filename');
+   End;
+   Else Begin
+    WriteLn('DUMP : Cette commande permet de sauvegarder le contenu de la ',
+                   'la mÇmoire conventionnelle de 640 Ko et l''envoi dans ',
+                   'un fichier.');
+    WriteLn;
+    WriteLn('Syntaxe : DUMP [/?] filename');
+    WriteLn;
+    WriteLn(' /?          Ce paramätre permet de founir de l''aide sur cette commande.');
+    WriteLn('filename     Ce paramätre permet d''indiquer le fichier de sortie');
+   End;
+  End;
+ End
+  Else
+ Begin
+  Assign(OutFile,CurrParam);
+  Rewrite(OutFile,1);
+  For I:=0 to ((640 div $40) - $1)do Begin
+   BlockWrite(OutFile,Mem[I:$0000],$8000);
+   BlockWrite(OutFile,Mem[I:$8000],$8000)
+  End;
+  Close(OutFile)
+ End;
+ {$ENDIF}
 End;
 
 Function ExitCommand:Boolean;
@@ -694,8 +761,47 @@ Procedure LIBCommand;Begin
  WriteLn('Cette commande n''est pas mise en oeuvre');
 End;
 
-Procedure LISTCommand;Begin
- WriteLn('Cette commande n''est pas mise en oeuvre');
+Procedure LISTCommand;
+Var
+ I,P:Integer;
+ Handle:Text;
+ CurrLine,CurrParam:String;
+Begin
+ CurrParam:=ExtractParam(1);
+ If(CurrParam='/?')or(CurrParam='--help')or(CurrParam='-h')Then Begin
+  WriteLn('LIST : Cette commande permet d''afficher le contenu du fichier.');
+  WriteLn;
+  WriteLn('Syntaxe : LIST [fichier]');
+ End
+  Else
+ If CurrParam<>''Then Begin
+  P:=0;
+  Repeat
+   Inc(P);
+   CurrParam:=ExtractParam(P);
+   If CurrParam<>''Then Begin
+    Assign(Handle,CurrParam);
+    {$I-}Reset(Handle);{$I+}
+    If IOResult=0Then Begin
+     While NOT EOF(Handle)do Begin
+      ReadLn(Handle,CurrLine);
+      WriteLn(CurrLine);
+     End;
+     Close(Handle);
+    End
+     Else
+    WriteLn('Impossible de lire ',ParamStr(I));
+   End;
+   If P>9Then Break;
+  Until CurrParam='';
+ End
+  Else
+ Begin
+  Repeat
+   ReadLn(Input,CurrLine);
+   WriteLn(CurrLine);
+  Until EOF;
+ End;
 End;
 
 Procedure LOADCommand;Begin
@@ -835,7 +941,18 @@ Procedure RunCommand;
 Var
  LastEcho:Boolean;
  FileJcl:Text;
+ Error:Word;
+ PipeS:String;
 Begin
+  { Change d'unitÇ de disque :A, :B, :C, :D,... }
+ If(Length(CmdStr)=2)and(CmdStr[1]=':')and(CmdStr[2]in['A'..'Z','a'..'z'])Then Begin
+  {$I-}GetDir(Ord(UpCase(CmdStr[2]))-64,PipeS);
+  If PipeS<>''Then ChDir(PipeS)
+              Else ChDir(CmdStr+'\');{$I+}
+  Error:=IoResult;
+  If Error<>0Then WriteLn(GetErrorMessage(Error));
+  Exit;
+ End;
  ExtractCommand;
  CommandFound:=False;
  For J:=Low(CommandList) to High(CommandList) do Begin
@@ -910,6 +1027,57 @@ Begin
  End;
 End;
 
+Procedure ReadLine(Var S:String);
+Var
+ Rec:SearchRec;
+ K:Char;
+ X,Y,I:Byte;
+ CurrHistory:Integer;
+ Hour,Minute,Second,CentSec:Word;
+Begin
+ X:=WhereX;
+ Y:=WhereY;
+ S:='';
+ Repeat
+  GotoXY(X,Y);
+  Write(S);
+  ClrEol;
+  If(Clock)Then Begin
+   Repeat
+    If Not(Keypressed)Then Begin
+     Delay(100);
+     GotoXY(53,1);
+     GetTime(Hour,Minute,Second,CentSec);
+     Write(Hour:2,':',PadZeroLeft(Minute,2),':',PadZeroLeft(Second,2));
+     GotoXY(X,Y);
+     Write(S);
+     For I:=1 to 9 do Begin
+      If Not(KeyPressed)Then Delay(100);
+     End;
+    End;
+   Until Keypressed;
+  End;
+  K:=ReadKey;
+  Case K of
+   #0:Case ReadKey of
+    #72:;
+   End;
+   #8:Begin
+    If S<>''Then S:=Copy(S,1,Length(S)-1);
+   End;
+   #9:Begin
+   End;
+   Else S:=S+K;
+  End;
+  If S[Length(S)]=#13Then Begin
+   S:=Copy(S,1,Length(S)-1);
+   K:=#13;
+  End;
+ Until K=#13;
+ GotoXY(X,Y);
+ WriteLn(S);
+End;
+
 BEGIN
  {$IFDEF FPC}
   {$IFDEF WINDOWS}
@@ -925,7 +1093,7 @@ BEGIN
   If StrToUpper(Copy(TmpLanguage,1,2))='IT'Then Language:=_Italian Else
   If StrToUpper(Copy(TmpLanguage,1,2))='SP'Then Language:=_Spain;
  End;
- Echo:=True;
+ Echo:=True;Clock:=False;
  InCmd:=0;
  If(ParamStr(1)='/?')or(ParamStr(1)='--help')or(ParamStr(1)='-h')Then Begin
   Case Language of
@@ -971,7 +1139,7 @@ BEGIN
   HomeMessage;
   Repeat
    ShowPrompt;
-   ReadLn(CmdStr);
+   ReadLine(CmdStr);
    RunCommand;
   Until Terminated;
  End;
