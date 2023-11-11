@@ -31,6 +31,10 @@ Voici la liste des différents fichiers proposés dans TRSDOS-0 :
 			<td>Cette commande permet d'afficher l'espace de libre sur les unités.</td>
 		</tr>
 		<tr>
+			<td><b>KILL.PAS</b></td>
+			<td>Cette commande permet d'effectuer la suppression de ficheir sur un unité de disque.</td>
+		</tr>
+		<tr>
 			<td><b>LIST.PAS</b></td>
 			<td>Cette commande permet d'afficher le contenu du fichier.</td>
 		</tr>
